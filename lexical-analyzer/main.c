@@ -12,8 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_TABLE_SIZE 1000
-#define MAX_BUFFER_SIZE 100
+#define MAX_TABLE_SIZE 100
+#define MAX_BUFFER_SIZE 1000
 
 #define ID 0
 #define INTEGER 1
@@ -35,19 +35,19 @@ const char TOKEN_TYPES[][11] = {
     "ID", "INT", "REAL", "STRING","ADD_OP", "SUB_OP", 
     "MUL_OP", "DIV_OP", "ASSIGN", "COLON", "SEMICOLON" 
 };
+typedef union Value {
+    double raw;
+}Value;
 
 typedef struct Token{
     int type;
-    int value;
+    Value value;
 }Token;
 
 typedef int State;
 typedef int Bool;
 
-void error(void) {
-    printf("[*] State Error! \n");
-    exit(-1);
-}
+
 
 Token getNextToken();
 void skipWhiteSpace();
@@ -61,8 +61,12 @@ void retract();
 void fail();
 char nextChar();
 void storeLexeme();
+void initLexemeBuffer();
+void error(void);
+
 int lexeme_start = 0;
 int forward = 0;
+int current_line = 0;
 const Token FAILED_TOKEN = { -1, -1 };
 char* symbol_list[MAX_TABLE_SIZE] = { NULL, };
 char* string_list[MAX_TABLE_SIZE] = { NULL, };
@@ -71,44 +75,58 @@ char lexeme[MAX_BUFFER_SIZE] = { NULL, };
 
 int main(int argc, char* argv[]) {
     Token token;
-
+    lexeme_start = 0;
+    forward = 0;
     // scan line from stdin
     while (TRUE) {
-        scanf("%s", buffer);
-        lexeme_start = 0;
-        forward = 0;
+        gets(buffer + strlen(buffer));
+        buffer[strlen(buffer)] = '\n';
+        current_line++;
         // parse token
         while (TRUE) {
             token = getNextToken();
-            printf("<%s, %d> %s\n", TOKEN_TYPES[token.type], token.value, lexeme);
+            if (token.type == ID || token.type == INTEGER) {
+                printf("<%s, %d> %s\n", TOKEN_TYPES[token.type], (int)token.value.raw, lexeme);
+            }
+            else if (token.type == REAL) {
+                printf("<%s, %lf> %s\n", TOKEN_TYPES[token.type], token.value.raw, lexeme);
+            }
+            else if (token.type >= ADD && token.type <= SEMI_COLON) {
+                printf("<%s, > %s\n", TOKEN_TYPES[token.type], lexeme);
+            }
+            else {
+                printf("[*] Token Error\n");
+            }
             lexeme_start = forward;
-            if (lexeme_start >= strlen(buffer)) {
+            if (lexeme_start == (strlen(buffer) - 1)) {
+                lexeme_start++; forward++;
                 break;
             }
         }
+        // Line clear
+        printf("\n");
+        //printSymbolTable();
+        //printStringTable();
     }
     return 0;
 }
-char nextChar() {
-    forward++;
-    return buffer[forward];
-}
-void storeLexeme() {
-    strncpy(&lexeme, &buffer[lexeme_start], forward - lexeme_start);
-    return;
-}
 Token getNextToken() {
     State state = 0;
-    Token token = { NULL, NULL };
+    Token token = { NULL, 0 };
+    initLexemeBuffer();
     while (TRUE) {
         skipWhiteSpace();
         switch (state) {
         case 0:
             token = getId();
+            if (isTokenFail(token)) { state = 1; break; }
+            return token;
+        case 1:
+            token = getNumber();
             if (isTokenFail(token)) { state = 2; break; }
             return token;
         case 2:
-            token = getNumber();
+            token = getOperator();
             if (isTokenFail(token)) { state = -1; break; }
             return token;
         default:
@@ -125,8 +143,7 @@ Token getId() {
         switch (state) {
         case 1:
             if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
-                state = 2;
-                ch = nextChar();
+                state = 2; ch = nextChar();
                 break;
             }
             else {
@@ -135,36 +152,30 @@ Token getId() {
             }
         case 2:
             if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
-                state = 2;
-                ch = nextChar();
+                state = 2; ch = nextChar();
                 break;
             }
             else if (ch >= '0' && ch <= '9') {
-                state = 3;
-                ch = nextChar();
+                state = 3; ch = nextChar();
                 break;
             }
             else {
-                state = 4;
-                ch = nextChar();
+                state = 4; //ch = nextChar();
                 break;
             }
         case 3:
             if (ch >= '0' && ch <= '9') {
-                state = 3;
-                ch = nextChar();
+                state = 3; ch = nextChar();
                 break;
             }
             else {
-                state = 4;
-                ch = nextChar();
+                state = 4; //ch = nextChar();
                 break;
             }
-        case 4:       
+        case 4:      
+            retract(); storeLexeme();
             token.type = ID;
-            token.value = installId();
-            storeLexeme();
-            retract();
+            token.value.raw = installId();
             return token;
         default:
             fail();
@@ -182,13 +193,11 @@ Token getNumber() {
         switch (state) {
         case 1:
             if (ch >= '0' && ch <= '9') {
-                state = 2;
-                ch = nextChar();
+                state = 2; ch = nextChar();
                 break;
             }
             else if( ch == '.') {
-                state = 3;
-                ch = nextChar();
+                state = 3; ch = nextChar();
                 break;
             }
             else {
@@ -197,37 +206,88 @@ Token getNumber() {
             }
         case 2:
             if (ch >= '0' && ch <= '9') {
-                state = 2;
-                ch = nextChar();
+                state = 2; ch = nextChar();
                 break;
             }
             else if (ch == '.') {
-                state = 3;
-                ch = nextChar();
+                state = 3; ch = nextChar();
                 break;
             }
             else {
-                state = 4;
-                ch = nextChar();
+                state = 4; //ch = nextChar();
                 break;
             }
         case 3:
             if (ch >= '0' && ch <= '9') {
-                state = 3;
-                ch = nextChar();
+                state = 3; ch = nextChar();
                 break;
             }
             else {
-                state = 5;
-                ch = nextChar();
+                state = 5; //ch = nextChar();
                 break;
             }
         case 4:
-            storeLexeme();
+            retract(); storeLexeme();
             token.type = INTEGER;
-            token.value = atoi(lexeme);
+            token.value.raw = atoi(lexeme);
             return token;
         case 5:
+            retract(); storeLexeme();
+            token.type = REAL;
+            token.value.raw = strtod(lexeme, NULL);
+            return token;
+        default:
+            fail();
+            return FAILED_TOKEN;
+        }
+    }
+}
+Token getOperator() {
+    State state = 1;
+    Token token = { 0, 0 };
+    char ch = NULL;
+    ch = nextChar();
+    while (TRUE) {
+        switch (state) {
+        case 1:
+            if (ch == '+') { state = 2; ch = nextChar(); break; }
+            else if (ch == '-') { state = 3; ch = nextChar(); break; }
+            else if (ch == '*') { state = 4; ch = nextChar(); break; }
+            else if (ch == '/') { state = 5; ch = nextChar(); break; }
+            else if (ch == '=') { state = 6; ch = nextChar(); break; }
+            else if (ch == ':') { state = 7; ch = nextChar(); break; }
+            else if (ch == ';') { state = 8; ch = nextChar(); break; }
+            else {
+                state = FAILED_STATE;
+                break;
+            }
+        case 2:
+            retract(); storeLexeme();
+            token.type = ADD;
+            return token;
+        case 3:
+            retract(); storeLexeme();
+            token.type = SUB;
+            return token;
+        case 4:
+            retract(); storeLexeme();
+            token.type = MUL;
+            return token;
+        case 5:
+            retract(); storeLexeme();
+            token.type = DIV;
+            return token;
+        case 6:
+            retract(); storeLexeme();
+            token.type = ASSIGN;
+            return token;
+        case 7:
+            retract(); storeLexeme();
+            token.type = COLON;
+            return token;
+        case 8:
+            retract(); storeLexeme();
+            token.type = SEMI_COLON;
             return token;
         default:
             fail();
@@ -241,9 +301,16 @@ void retract() {
 void fail() {
     forward = lexeme_start;
 }
+void initLexemeBuffer() {
+    memset(lexeme, NULL, MAX_BUFFER_SIZE);
+}
 void skipWhiteSpace() {
     char ch = NULL; 
-    while ((ch = nextChar()) == ' ') {}
+    ch = nextChar();
+    while (ch == ' ' || ch == '\n') {
+        ch = nextChar();
+        lexeme_start++;
+    }
     retract();
     return;
 }
@@ -257,23 +324,38 @@ int installId() {
     // check if there is same id
     for (int i = 0; i <= index_count; i++) {
         // limit length of id below 10 when comparing
-        int id_length = (forward - lexeme_start) - 1;
+        int id_length = strlen(symbol_list[i]) > strlen(lexeme) ? strlen(symbol_list[i]) : strlen(lexeme);
         if (id_length > 10) {
             id_length = 10;
         }
         if (strlen(symbol_list[i]) < id_length) {
             continue;
         }
-        if (strncmp(symbol_list[i], &buffer[lexeme_start], id_length) == 0) {
+        if (strncmp(symbol_list[i], lexeme, id_length) == 0) {
             return i;
         }
     }
 
     // install new id 
     index_count++;
-    int size = sizeof(char) * (forward - lexeme_start);
+    // + 1 is for NULL
+    int size = sizeof(char) * strlen(lexeme) + 1;
     char* symbol = (char*)malloc(size);
-    strcpy(symbol, &buffer[lexeme_start], size);
+    memset(symbol, NULL, size);
+    strncpy(symbol, lexeme, size);
     symbol_list[index_count] = symbol;
     return index_count;
+}
+char nextChar() {
+    int i = forward++;
+    return buffer[i];
+}
+void storeLexeme() {
+    strncpy(&lexeme, &buffer[lexeme_start], forward - lexeme_start);
+    return;
+}
+void error(void) {
+    printf("[*] Lexical Error in Line #%d : %c \n", current_line, buffer[forward]);
+    exit(-1);
+    return;
 }
