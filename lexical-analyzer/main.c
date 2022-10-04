@@ -30,7 +30,7 @@
 #define TRUE 1
 #define FALSE 0
 
-#define FAIL_STATE -1
+#define FAILED_STATE -1
 const char TOKEN_TYPES[][11] = {
     "ID", "INT", "REAL", "STRING","ADD_OP", "SUB_OP", 
     "MUL_OP", "DIV_OP", "ASSIGN", "COLON", "SEMICOLON" 
@@ -57,12 +57,13 @@ Token getString();
 Token getOperator();
 Bool isTokenFail(Token token);
 int installId();
-
+void retract();
+void fail();
 char nextChar();
-
+void storeLexeme();
 int lexeme_start = 0;
 int forward = 0;
-const Token FAIL_TOKEN = { -1, -1 };
+const Token FAILED_TOKEN = { -1, -1 };
 char* symbol_list[MAX_TABLE_SIZE] = { NULL, };
 char* string_list[MAX_TABLE_SIZE] = { NULL, };
 char buffer[MAX_BUFFER_SIZE] = { NULL, };
@@ -79,7 +80,6 @@ int main(int argc, char* argv[]) {
         // parse token
         while (TRUE) {
             token = getNextToken();
-            strncpy(&lexeme, &buffer[lexeme_start], forward - lexeme_start);
             printf("<%s, %d> %s\n", TOKEN_TYPES[token.type], token.value, lexeme);
             lexeme_start = forward;
             if (lexeme_start >= strlen(buffer)) {
@@ -93,6 +93,10 @@ char nextChar() {
     forward++;
     return buffer[forward];
 }
+void storeLexeme() {
+    strncpy(&lexeme, &buffer[lexeme_start], forward - lexeme_start);
+    return;
+}
 Token getNextToken() {
     State state = 0;
     Token token = { NULL, NULL };
@@ -101,10 +105,10 @@ Token getNextToken() {
         switch (state) {
         case 0:
             token = getId();
-            if (isTokenFail(token)) { state = 6; break; }
+            if (isTokenFail(token)) { state = 2; break; }
             return token;
-        case 6:
-            //token = getNumber();
+        case 2:
+            token = getNumber();
             if (isTokenFail(token)) { state = -1; break; }
             return token;
         default:
@@ -126,7 +130,7 @@ Token getId() {
                 break;
             }
             else {
-                state = FAIL_STATE;
+                state = FAILED_STATE;
                 break;
             }
         case 2:
@@ -159,21 +163,92 @@ Token getId() {
         case 4:       
             token.type = ID;
             token.value = installId();
+            storeLexeme();
+            retract();
             return token;
         default:
-            return FAIL_TOKEN;
+            fail();
+            return FAILED_TOKEN;
         }
     }
 }
 
+Token getNumber() {
+    State state = 1;
+    Token token = { 0, 0 };
+    char ch = NULL;
+    ch = nextChar();
+    while (TRUE) {
+        switch (state) {
+        case 1:
+            if (ch >= '0' && ch <= '9') {
+                state = 2;
+                ch = nextChar();
+                break;
+            }
+            else if( ch == '.') {
+                state = 3;
+                ch = nextChar();
+                break;
+            }
+            else {
+                state = FAILED_STATE;
+                break;
+            }
+        case 2:
+            if (ch >= '0' && ch <= '9') {
+                state = 2;
+                ch = nextChar();
+                break;
+            }
+            else if (ch == '.') {
+                state = 3;
+                ch = nextChar();
+                break;
+            }
+            else {
+                state = 4;
+                ch = nextChar();
+                break;
+            }
+        case 3:
+            if (ch >= '0' && ch <= '9') {
+                state = 3;
+                ch = nextChar();
+                break;
+            }
+            else {
+                state = 5;
+                ch = nextChar();
+                break;
+            }
+        case 4:
+            storeLexeme();
+            token.type = INTEGER;
+            token.value = atoi(lexeme);
+            return token;
+        case 5:
+            return token;
+        default:
+            fail();
+            return FAILED_TOKEN;
+        }
+    }
+}
+void retract() {
+    forward--;
+}
+void fail() {
+    forward = lexeme_start;
+}
 void skipWhiteSpace() {
     char ch = NULL; 
     while ((ch = nextChar()) == ' ') {}
-    forward--;
+    retract();
     return;
 }
 Bool isTokenFail(Token token) {
-    if (token.type == FAIL_TOKEN.type)
+    if (token.type == FAILED_TOKEN.type)
         return TRUE;
     return FALSE;
 }
