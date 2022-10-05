@@ -84,11 +84,11 @@ int main(int argc, char* argv[]) {
         int prev_length = strlen(buffer);
         gets(buffer + strlen(buffer));
         int current_length = strlen(buffer);
-        if(current_length - prev_length == 0 || (current_length - prev_length == 1 && buffer[strlen(buffer) - 1 ] == '\n')){
-            buffer[strlen(buffer) - 1 ] = NULL;
+        buffer[strlen(buffer)] = '\n';
+        if (current_length - prev_length == 0 || (current_length - prev_length == 1 && buffer[strlen(buffer) - 1] == '\n')) {
+            buffer[strlen(buffer) - 1] = NULL;
             continue;
         }
-        buffer[strlen(buffer)] = '\n';
         /*
         printf("gets %d %d\n",prev_length, current_length);
         for(int i = 0; i < strlen(buffer) + 1; i++){
@@ -100,6 +100,10 @@ int main(int argc, char* argv[]) {
         // parse token
         while (TRUE) {
             skipWhiteSpace();
+            if (lexeme_start == strlen(buffer)) {
+                //lexeme_start++; forward++;
+                break;
+            }
             token = getNextToken();
             if (token.type == ID || token.type == INTEGER) {
                 printf("<%s, %d> %s\n", TOKEN_TYPES[token.type], (int)token.value.raw, lexeme);
@@ -117,10 +121,6 @@ int main(int argc, char* argv[]) {
                 printf("[*] Token Error\n");
             }
             lexeme_start = forward;
-            if (lexeme_start == (strlen(buffer) - 1)) {
-                lexeme_start++; forward++;
-                break;
-            }
         }
         // Line clear
         printf("\n");
@@ -169,7 +169,7 @@ Token getString() {
     while (TRUE) {
         switch (state) {
             case 1:
-                if (ch == '"') {
+                if (ch == '\"') {
                     state = 2; ch = nextChar();
                     break;
                 }
@@ -178,7 +178,7 @@ Token getString() {
                     break;
                 }
             case 2:
-                if (ch != '\\' &&  ch != '"') {
+                if (ch != '\\' &&  ch != '\"') {
                     state = 2; ch = nextChar();
                     break;
                 }
@@ -186,7 +186,7 @@ Token getString() {
                     state = 3; ch = nextChar();
                     break;
                 }
-                else if(ch == '"'){
+                else if(ch == '\"'){
                     state = 4; ch = nextChar();
                     break;
                 }
@@ -210,7 +210,6 @@ Token getString() {
                 return token;
             default:
                 fail();
-                printf("[*] Error ch : 0x%x, forward : %d, lexeme_start : %d\n", ch, forward, lexeme_start);
                 return FAILED_TOKEN;
         }
     }
@@ -449,6 +448,6 @@ void storeLexeme() {
 }
 void error(void) {
     printf("[*] Error Line #%d : %x \n", current_line, buffer[forward]);
-    exit(-1);
+    //exit(-1);
     return;
 }
