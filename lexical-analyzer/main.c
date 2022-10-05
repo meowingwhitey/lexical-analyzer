@@ -51,10 +51,13 @@ typedef struct Token{
 
 Token getNextToken();
 void skipWhiteSpace();
+
 Token getId();
 Token getNumber();
 Token getString();
 Token getOperator();
+State getMultilineString();
+
 Bool isTokenFail(Token token);
 int installId();
 int installString();
@@ -91,13 +94,7 @@ int main(int argc, char* argv[]) {
             buffer[strlen(buffer) - 1] = NULL;
             continue;
         }
-        /*
-        printf("gets %d %d\n",prev_length, current_length);
-        for(int i = 0; i < strlen(buffer) + 1; i++){
-            printf("0x%x : %c ", buffer[i], buffer[i]);
-        }
-        printf("\n");
-        */
+
         current_line++;
         // parse token
         while (TRUE) {
@@ -126,13 +123,11 @@ int main(int argc, char* argv[]) {
             }
             else {
                 printf("[*] Token Error\n");
-            }\
+            }
             lexeme_start = forward;
         }
         // Line clear
         printf("\n");
-        //printSymbolTable();
-        //printStringTable();
     }
     return 0;
 }
@@ -168,59 +163,7 @@ Token getNextToken() {
         }
     }
 }
-Token getString() {
-    State state = 1;
-    Token token = {0, 0};
-    char ch = NULL;
-    ch = nextChar();
-    while (TRUE) {
-        switch (state) {
-            case 1:
-                if (ch == '\"') {
-                    state = 2; ch = nextChar();
-                    break;
-                }
-                else {
-                    state = FAILED_STATE;
-                    break;
-                }
-            case 2:
-                if (ch != '\\' &&  ch != '\"') {
-                    state = 2; ch = nextChar();
-                    break;
-                }
-                else if(ch == '\\'){
-                    state = 3; ch = nextChar();
-                    break;
-                }
-                else if(ch == '\"'){
-                    state = 4; ch = nextChar();
-                    break;
-                }
-                else{
-                    state = FAILED_STATE;
-                    break;
-                }
-            case 3:
-                if (ch >= '0' && ch <= '9') {
-                    state = 3; ch = nextChar();
-                    break;
-                }
-                else {
-                    state = 4; //ch = nextChar();
-                    break;
-                }
-            case 4:
-                retract(); storeLexeme();
-                token.type = STRING;
-                token.value.raw = installString();
-                return token;
-            default:
-                fail();
-                return FAILED_TOKEN;
-        }
-    }
-}
+
 Token getId() {
     State state = 1;
     Token token = {0, 0};
@@ -382,6 +325,79 @@ Token getOperator() {
         }
     }
 }
+Token getString() {
+    State state = 1;
+    Token token = { 0, 0 };
+    char ch = NULL;
+    ch = nextChar();
+    while (TRUE) {
+        switch (state) {
+        case 1:
+            if (ch == '\"') {
+                state = 2; ch = nextChar();
+                break;
+            }
+            else {
+                state = FAILED_STATE;
+                break;
+            }
+        case 2:
+            if (ch != '\\' && ch != '\"') {
+                state = 2; ch = nextChar();
+                break;
+            }
+            else if (ch == '\\') {
+                state = 3; ch = nextChar();
+                break;
+            }
+            else if (ch == '\"') {
+                state = 4; ch = nextChar();
+                break;
+            }
+            else {
+                state = FAILED_STATE;
+                break;
+            }
+        case 3:
+            if (ch == 't' || ch == 'n' || ch == 'a' || ch == '\\' || ch == '\'' || ch == '\"' || ch == 'b' || ch == 'r') {
+                state = 2; ch = nextChar();
+                break;
+            }
+            else if (ch == '\0' || ch == '\n') {
+                state = 5;
+                break;
+            }
+            else {
+                state = FAILED_STATE;
+                break;
+            }
+        case 4:
+            retract(); storeLexeme();
+            token.type = STRING;
+            token.value.raw = installString();
+            return token;
+        case 5:
+            retract();
+            state = getMultilineString();
+            break;
+        default:
+            fail();
+            return FAILED_TOKEN;
+        }
+    }
+}
+State getMultilineString() {
+    char ch = NULL;
+    // prevent void input
+    int prev_length = strlen(buffer);
+    gets(buffer + strlen(buffer));
+    int current_length = strlen(buffer);
+    buffer[strlen(buffer)] = '\n';
+    if (current_length - prev_length == 0 || (current_length - prev_length == 1 && buffer[strlen(buffer) - 1] == '\n')) {
+        buffer[strlen(buffer) - 1] = NULL;
+    }
+    return 2;
+}
 void retract() {
     forward--;
 }
@@ -460,8 +476,8 @@ void storeLexeme() {
     return;
 }
 void error(void) {
-    printf("[*] Error Line #%d : %x \n", current_line, buffer[forward]);
-    //exit(-1);
+    printf("Error Line #%d : %c(0x%x) \n", current_line, buffer[forward], buffer[forward]);
+    exit(-1);
     return;
 }
 void printSymbolTable(){
