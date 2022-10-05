@@ -64,13 +64,15 @@ char nextChar();
 void storeLexeme();
 void initLexemeBuffer();
 void error(void);
+void printSymbolTable();
+void printStringTable();
 
 int lexeme_start = 0;
 int forward = 0;
 int current_line = 0;
 const Token FAILED_TOKEN = { -1, -1 };
-char* symbol_list[MAX_TABLE_SIZE] = { NULL, };
-char* string_list[MAX_TABLE_SIZE] = { NULL, };
+char* symbol_table[MAX_TABLE_SIZE] = { NULL, };
+char* string_table[MAX_TABLE_SIZE] = { NULL, };
 char buffer[MAX_BUFFER_SIZE] = { NULL, };
 char lexeme[MAX_BUFFER_SIZE] = { NULL, };
 
@@ -105,7 +107,11 @@ int main(int argc, char* argv[]) {
                 break;
             }
             token = getNextToken();
-            if (token.type == ID || token.type == INTEGER) {
+            if (token.type == ID) {
+                printf("<%s, %d> %s\n", TOKEN_TYPES[token.type], (int)token.value.raw, lexeme);
+                printSymbolTable();
+            }
+            else if (token.type == INTEGER) {
                 printf("<%s, %d> %s\n", TOKEN_TYPES[token.type], (int)token.value.raw, lexeme);
             }
             else if (token.type == REAL) {
@@ -116,10 +122,11 @@ int main(int argc, char* argv[]) {
             }
             else if (token.type == STRING) {
                 printf("<%s, %d> %s\n", TOKEN_TYPES[token.type], (int)token.value.raw, lexeme);
+                printStringTable();
             }
             else {
                 printf("[*] Token Error\n");
-            }
+            }\
             lexeme_start = forward;
         }
         // Line clear
@@ -404,14 +411,14 @@ int installId() {
     // check if there is same id
     for (int i = 0; i <= index_count; i++) {
         // limit length of id below 10 when comparing
-        int id_length = strlen(symbol_list[i]) > strlen(lexeme) ? strlen(symbol_list[i]) : strlen(lexeme);
+        int id_length = strlen(symbol_table[i]) > strlen(lexeme) ? strlen(symbol_table[i]) : strlen(lexeme);
         if (id_length > 10) {
             id_length = 10;
         }
-        if (strlen(symbol_list[i]) < id_length) {
+        if (strlen(symbol_table[i]) < id_length) {
             continue;
         }
-        if (strncmp(symbol_list[i], lexeme, id_length) == 0) {
+        if (strncmp(symbol_table[i], lexeme, id_length) == 0) {
             return i;
         }
     }
@@ -423,7 +430,7 @@ int installId() {
     char* symbol = (char*)malloc(size);
     memset(symbol, NULL, size);
     strncpy(symbol, lexeme, size);
-    symbol_list[index_count] = symbol;
+    symbol_table[index_count] = symbol;
     return index_count;
 }
 int installString() {
@@ -435,7 +442,7 @@ int installString() {
     char* string = (char*)malloc(size);
     memset(string, NULL, size);
     strncpy(string, lexeme, size);
-    string_list[index_count] = string;
+    string_table[index_count] = string;
     return index_count;
 }
 char nextChar() {
@@ -449,5 +456,33 @@ void storeLexeme() {
 void error(void) {
     printf("[*] Error Line #%d : %x \n", current_line, buffer[forward]);
     //exit(-1);
+    return;
+}
+void printSymbolTable(){
+    int i = 0;
+    // print symbol table
+    printf("[*] Symbol Table\n");
+    while(TRUE){
+         if(symbol_table[i] == NULL){
+            break;
+        }
+        printf("Index: %d, Symbol: %s\n", i, symbol_table[i]);
+        i++;       
+    }
+    printf("\n");
+    return;
+}
+void printStringTable(){
+    int i = 0;
+    // print string table
+    printf("[*] String Table\n");
+    while(TRUE){
+        if(string_table[i] == NULL){
+            break;
+        }
+        printf("Index: %d, String: %s\n", i, string_table[i]);
+        i++;
+    }
+    printf("\n");
     return;
 }
