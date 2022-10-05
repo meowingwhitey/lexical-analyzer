@@ -435,8 +435,14 @@ int installId() {
 }
 int installString() {
     static int index_count = -1;
+    // check if there is same string
+    for (int i = 0; i <= index_count; i++) {
+        if (strcmp(string_table[i], lexeme) == 0) {
+            return i;
+        }
+    }
+    // install new string
     index_count++;
-
     // + 1 is for NULL Character
     int size = sizeof(char) * strlen(lexeme) + 1;
     char* string = (char*)malloc(size);
