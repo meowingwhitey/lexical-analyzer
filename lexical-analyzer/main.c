@@ -489,7 +489,7 @@ void storeLexeme() {
 }
 void error(void) {
     printf("Error Line #%d : %c(0x%x) \n", current_line, buffer[forward], buffer[forward]);
-    exit(-1);
+    //exit(-1);
     return;
 }
 void printSymbolTable(){
