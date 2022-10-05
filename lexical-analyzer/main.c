@@ -1,12 +1,12 @@
 /*
 *
-* 201720857 »çÀÌ¹öº¸¾ÈÇÐ°ú ±è¿µÇ¥
-* 2022-2 ÄÄÆÄÀÏ·¯ Programming Project #1
-* Lexical Analyzer ±¸Çö
-* 
+* 201720857 ï¿½ï¿½ï¿½Ì¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð°ï¿½ ï¿½è¿µÇ¥
+* 2022-2 ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ Programming Project #1
+* Lexical Analyzer ï¿½ï¿½ï¿½ï¿½
+*
 * Reference
-* 2ÁÖÂ÷ °­ÀÇ³ëÆ® - LEXICAL ANALYSIS
-* 
+* 2ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ç³ï¿½Æ® - LEXICAL ANALYSIS
+*
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,23 +31,23 @@
 #define FALSE 0
 
 #define FAILED_STATE -1
+
+typedef double DWORD;
+typedef int State;
+typedef int Bool;
+
 const char TOKEN_TYPES[][11] = {
-    "ID", "INT", "REAL", "STRING","ADD_OP", "SUB_OP", 
-    "MUL_OP", "DIV_OP", "ASSIGN", "COLON", "SEMICOLON" 
+    "ID", "INT", "REAL", "STRING","ADD_OP", "SUB_OP",
+    "MUL_OP", "DIV_OP", "ASSIGN", "COLON", "SEMICOLON"
 };
 typedef union Value {
-    double raw;
+    DWORD raw;
 }Value;
 
 typedef struct Token{
     int type;
     Value value;
 }Token;
-
-typedef int State;
-typedef int Bool;
-
-
 
 Token getNextToken();
 void skipWhiteSpace();
@@ -57,6 +57,7 @@ Token getString();
 Token getOperator();
 Bool isTokenFail(Token token);
 int installId();
+int installString();
 void retract();
 void fail();
 char nextChar();
@@ -79,11 +80,26 @@ int main(int argc, char* argv[]) {
     forward = 0;
     // scan line from stdin
     while (TRUE) {
+        // prevent void input
+        int prev_length = strlen(buffer);
         gets(buffer + strlen(buffer));
+        int current_length = strlen(buffer);
+        if(current_length - prev_length == 0 || (current_length - prev_length == 1 && buffer[strlen(buffer) - 1 ] == '\n')){
+            buffer[strlen(buffer) - 1 ] = NULL;
+            continue;
+        }
         buffer[strlen(buffer)] = '\n';
+        /*
+        printf("gets %d %d\n",prev_length, current_length);
+        for(int i = 0; i < strlen(buffer) + 1; i++){
+            printf("0x%x : %c ", buffer[i], buffer[i]);
+        }
+        printf("\n");
+        */
         current_line++;
         // parse token
         while (TRUE) {
+            skipWhiteSpace();
             token = getNextToken();
             if (token.type == ID || token.type == INTEGER) {
                 printf("<%s, %d> %s\n", TOKEN_TYPES[token.type], (int)token.value.raw, lexeme);
@@ -93,6 +109,9 @@ int main(int argc, char* argv[]) {
             }
             else if (token.type >= ADD && token.type <= SEMI_COLON) {
                 printf("<%s, > %s\n", TOKEN_TYPES[token.type], lexeme);
+            }
+            else if (token.type == STRING) {
+                printf("<%s, %d> %s\n", TOKEN_TYPES[token.type], (int)token.value.raw, lexeme);
             }
             else {
                 printf("[*] Token Error\n");
@@ -127,10 +146,72 @@ Token getNextToken() {
             return token;
         case 2:
             token = getOperator();
+            if (isTokenFail(token)) { state = 3; break; }
+            return token;
+        case 3:
+            token = getString();
             if (isTokenFail(token)) { state = -1; break; }
             return token;
         default:
             error();
+            // Skip Error Character
+            forward++;
+            lexeme_start++;
+            state = 0;
+        }
+    }
+}
+Token getString() {
+    State state = 1;
+    Token token = {0, 0};
+    char ch = NULL;
+    ch = nextChar();
+    while (TRUE) {
+        switch (state) {
+            case 1:
+                if (ch == '"') {
+                    state = 2; ch = nextChar();
+                    break;
+                }
+                else {
+                    state = FAILED_STATE;
+                    break;
+                }
+            case 2:
+                if (ch != '\\' &&  ch != '"') {
+                    state = 2; ch = nextChar();
+                    break;
+                }
+                else if(ch == '\\'){
+                    state = 3; ch = nextChar();
+                    break;
+                }
+                else if(ch == '"'){
+                    state = 4; ch = nextChar();
+                    break;
+                }
+                else{
+                    state = FAILED_STATE;
+                    break;
+                }
+            case 3:
+                if (ch >= '0' && ch <= '9') {
+                    state = 3; ch = nextChar();
+                    break;
+                }
+                else {
+                    state = 4; //ch = nextChar();
+                    break;
+                }
+            case 4:
+                retract(); storeLexeme();
+                token.type = STRING;
+                token.value.raw = installString();
+                return token;
+            default:
+                fail();
+                printf("[*] Error ch : 0x%x, forward : %d, lexeme_start : %d\n", ch, forward, lexeme_start);
+                return FAILED_TOKEN;
         }
     }
 }
@@ -172,7 +253,7 @@ Token getId() {
                 state = 4; //ch = nextChar();
                 break;
             }
-        case 4:      
+        case 4:
             retract(); storeLexeme();
             token.type = ID;
             token.value.raw = installId();
@@ -305,7 +386,7 @@ void initLexemeBuffer() {
     memset(lexeme, NULL, MAX_BUFFER_SIZE);
 }
 void skipWhiteSpace() {
-    char ch = NULL; 
+    char ch = NULL;
     ch = nextChar();
     while (ch == ' ' || ch == '\n') {
         ch = nextChar();
@@ -336,7 +417,7 @@ int installId() {
         }
     }
 
-    // install new id 
+    // install new id
     index_count++;
     // + 1 is for NULL
     int size = sizeof(char) * strlen(lexeme) + 1;
@@ -344,6 +425,18 @@ int installId() {
     memset(symbol, NULL, size);
     strncpy(symbol, lexeme, size);
     symbol_list[index_count] = symbol;
+    return index_count;
+}
+int installString() {
+    static int index_count = -1;
+    index_count++;
+
+    // + 1 is for NULL Character
+    int size = sizeof(char) * strlen(lexeme) + 1;
+    char* string = (char*)malloc(size);
+    memset(string, NULL, size);
+    strncpy(string, lexeme, size);
+    string_list[index_count] = string;
     return index_count;
 }
 char nextChar() {
@@ -355,7 +448,7 @@ void storeLexeme() {
     return;
 }
 void error(void) {
-    printf("[*] Lexical Error in Line #%d : %c \n", current_line, buffer[forward]);
+    printf("[*] Error Line #%d : %x \n", current_line, buffer[forward]);
     exit(-1);
     return;
 }
