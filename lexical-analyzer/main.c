@@ -438,14 +438,16 @@ int installId() {
             return i;
         }
     }
-
     // install new id
     index_count++;
     // + 1 is for NULL
     int size = sizeof(char) * strlen(lexeme) + 1;
+    if (size > 11) {
+        size = 11;
+    }
     char* symbol = (char*)malloc(size);
     memset(symbol, NULL, size);
-    strncpy(symbol, lexeme, size);
+    strncpy(symbol, lexeme, size - 1);
     symbol_table[index_count] = symbol;
     return index_count;
 }
@@ -472,7 +474,17 @@ char nextChar() {
     return buffer[i];
 }
 void storeLexeme() {
-    strncpy(&lexeme, &buffer[lexeme_start], forward - lexeme_start);
+    int j = 0;
+    for (int i = 0; i + j < forward - lexeme_start; i++) {
+        while (TRUE) {
+            if (buffer[lexeme_start + i + j] == '\n' || buffer[lexeme_start + i + j] == '\\') {
+                j++;
+            }
+            else break;
+        }
+        lexeme[i] = buffer[lexeme_start + i + j];
+    }
+    //strncpy(&lexeme, &buffer[lexeme_start], forward - lexeme_start);
     return;
 }
 void error(void) {
