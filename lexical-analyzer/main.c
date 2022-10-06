@@ -59,6 +59,7 @@ Token getOperator();
 State getMultilineString();
 
 Bool isTokenFail(Token token);
+Bool isSeparator(char ch);
 int installId();
 int installString();
 void retract();
@@ -88,7 +89,7 @@ int main(int argc, char* argv[]) {
     forward = 0;
     // scan line from stdin
     while (TRUE) {
-        
+        double a = .234;
         // prevent void input
         int prev_length = strlen(buffer);
         gets(buffer + strlen(buffer));
@@ -191,8 +192,7 @@ Token getId() {
                 state = 3; ch = nextChar();
                 break;
             }
-            else if (ch == '\n' || ch == ' ' || ch == '\0' ||
-             ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == ':' || ch == ';') {
+            else if (isSeparator(ch)) {
                 state = 4; //ch = nextChar();
                 break;
             }
@@ -205,8 +205,7 @@ Token getId() {
                 state = 3; ch = nextChar();
                 break;
             }
-            else if (ch == '\n' || ch == ' ' || ch == '\0' ||
-             ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == ':' || ch == ';') {
+            else if (isSeparator(ch)) {
                 state = 4; //ch = nextChar();
                 break;
             }
@@ -259,8 +258,7 @@ Token getNumber() {
                 state = 3; ch = nextChar();
                 break;
             }
-            else if(ch == '\n' || ch == '\0' || ch == ' ' ||
-             ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == ':' || ch == ';'){
+            else if(isSeparator(ch)){
                 state = 4; //ch = nextChar();
                 break;
             }
@@ -273,8 +271,7 @@ Token getNumber() {
                 state = 3; ch = nextChar();
                 break;
             }
-            else if(ch == '\n' || ch == '\0' || ch == ' ' ||
-             ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == ':' || ch == ';'){
+            else if(isSeparator(ch)){
                 state = 5; //ch = nextChar();
                 break;
             }
@@ -294,13 +291,12 @@ Token getNumber() {
             return token;
         // handle '0*' case
         case 6:
-            if(ch == '\n' || ch == '\0' || ch == ' ' || 
-             ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == ':' || ch == ';'){
+            if(isSeparator(ch)){
                 state = 4;
                 break;
             }
             else{
-                printf("ch : %x\n", ch);
+                //printf("ch : %x\n", ch);
                 state = FAILED_STATE;
                 break;
             }
@@ -515,7 +511,7 @@ void storeLexeme() {
     int j = 0;
     for (int i = 0; i + j < forward - lexeme_start; i++) {
         while (TRUE) {
-            if (buffer[lexeme_start + i + j] == '\n' || buffer[lexeme_start + i + j] == '\\') {
+            if (buffer[lexeme_start + i + j] == '\n' || (buffer[lexeme_start + i + j] == '\\' && buffer[lexeme_start + i + j + 1] == '\n')) {
                 j++;
             }
             else break;
@@ -561,4 +557,10 @@ void printStringTable() {
         i++;
     }
     return;
+}
+Bool isSeparator(char ch) {
+    if (ch == '\n' || ch == '\0' || ch == ' ' || ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == ':' || ch == ';' || ch == '=' || ch =='\"') {
+        return TRUE;
+    }
+    return FALSE;
 }
