@@ -444,7 +444,7 @@ void initLexemeBuffer() {
 void skipWhiteSpace() {
     char ch = NULL;
     ch = nextChar();
-    while (ch == ' ' || ch == '\n') {
+    while (ch == ' ' || ch == '\n' || ch == '\t') {
         ch = nextChar();
         lexeme_start++;
     }
@@ -559,7 +559,7 @@ void printStringTable() {
     return;
 }
 Bool isSeparator(char ch) {
-    if (ch == '\n' || ch == '\0' || ch == ' ' || ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == ':' || ch == ';' || ch == '=' || ch =='\"') {
+    if (ch == '\n' || ch == '\0' || ch == ' ' || ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == ':' || ch == ';' || ch == '=' || ch == '\"' || ch == '\t') {
         return TRUE;
     }
     return FALSE;
