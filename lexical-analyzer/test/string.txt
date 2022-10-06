@@ -1,7 +1,2 @@
-"sample text"
-"this is test text"
-"~!@#$%^&*()"
-"this\
-string~~~~\
-abcdef\
-ghijklm" 10+1
+"aaaaa\taaaaa\[aaaaa"
+abc123abc

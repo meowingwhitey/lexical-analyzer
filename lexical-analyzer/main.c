@@ -1,11 +1,11 @@
 /*
 *
-* 201720857 ���̹������а� �迵ǥ
-* 2022-2 �����Ϸ� Programming Project #1
-* Lexical Analyzer ����
+* 201720857 사이버보안학과 김영표
+* 2022-2 컴파일러 Programming Project #1
+* Lexical Analyzer 과제
 *
 * Reference
-* 2���� ���ǳ�Ʈ - LEXICAL ANALYSIS
+* 2주차 수업자료 - LEXICAL ANALYSIS
 *
 */
 #include <stdio.h>
@@ -44,7 +44,7 @@ typedef union Value {
     DWORD raw;
 }Value;
 
-typedef struct Token{
+typedef struct Token {
     int type;
     Value value;
 }Token;
@@ -69,6 +69,7 @@ void initLexemeBuffer();
 void error(void);
 void printSymbolTable();
 void printStringTable();
+void recovery(void);
 
 int lexeme_start = 0;
 int forward = 0;
@@ -78,24 +79,27 @@ char* symbol_table[MAX_TABLE_SIZE] = { NULL, };
 char* string_table[MAX_TABLE_SIZE] = { NULL, };
 char buffer[MAX_BUFFER_SIZE] = { NULL, };
 char lexeme[MAX_BUFFER_SIZE] = { NULL, };
-
+// tracking end of line pointer in buffer
+int line_pointer[MAX_TABLE_SIZE] = {0,};
+int failed_line = 0;
 int main(int argc, char* argv[]) {
     Token token;
     lexeme_start = 0;
     forward = 0;
     // scan line from stdin
     while (TRUE) {
+        
         // prevent void input
         int prev_length = strlen(buffer);
         gets(buffer + strlen(buffer));
-        int current_length = strlen(buffer);
         buffer[strlen(buffer)] = '\n';
+        int current_length = strlen(buffer);
         if (current_length - prev_length == 0 || (current_length - prev_length == 1 && buffer[strlen(buffer) - 1] == '\n')) {
             buffer[strlen(buffer) - 1] = NULL;
             continue;
         }
-
-        current_line++;
+        current_line++; 
+        //line_pointer[current_line] = strlen(buffer);
         // parse token
         while (TRUE) {
             skipWhiteSpace();
@@ -122,7 +126,8 @@ int main(int argc, char* argv[]) {
                 printStringTable();
             }
             else {
-                printf("[*] Token Error\n");
+                recovery();
+                //printf("[*] Token Error\n");
             }
             lexeme_start = forward;
         }
@@ -156,17 +161,14 @@ Token getNextToken() {
             return token;
         default:
             error();
-            // Skip Error Character
-            forward++;
-            lexeme_start++;
-            state = 0;
+            return FAILED_TOKEN;
         }
     }
 }
 
 Token getId() {
     State state = 1;
-    Token token = {0, 0};
+    Token token = { 0, 0 };
     char ch = NULL;
     ch = nextChar();
     while (TRUE) {
@@ -189,8 +191,13 @@ Token getId() {
                 state = 3; ch = nextChar();
                 break;
             }
-            else {
+            else if (ch == '\n' || ch == ' ' || ch == '\0' ||
+             ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == ':' || ch == ';') {
                 state = 4; //ch = nextChar();
+                break;
+            }
+            else {
+                state = FAILED_STATE;
                 break;
             }
         case 3:
@@ -198,8 +205,13 @@ Token getId() {
                 state = 3; ch = nextChar();
                 break;
             }
-            else {
+            else if (ch == '\n' || ch == ' ' || ch == '\0' ||
+             ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == ':' || ch == ';') {
                 state = 4; //ch = nextChar();
+                break;
+            }
+            else {
+                state = FAILED_STATE;
                 break;
             }
         case 4:
@@ -222,11 +234,15 @@ Token getNumber() {
     while (TRUE) {
         switch (state) {
         case 1:
-            if (ch >= '0' && ch <= '9') {
+            if(ch == '0' ){
+                state = 6; ch = nextChar();
+                break;
+            }
+            else if (ch >= '1' && ch <= '9') {
                 state = 2; ch = nextChar();
                 break;
             }
-            else if( ch == '.') {
+            else if (ch == '.') {
                 state = 3; ch = nextChar();
                 break;
             }
@@ -243,8 +259,13 @@ Token getNumber() {
                 state = 3; ch = nextChar();
                 break;
             }
-            else {
+            else if(ch == '\n' || ch == '\0' || ch == ' ' ||
+             ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == ':' || ch == ';'){
                 state = 4; //ch = nextChar();
+                break;
+            }
+            else{
+                state = FAILED_STATE;
                 break;
             }
         case 3:
@@ -252,8 +273,13 @@ Token getNumber() {
                 state = 3; ch = nextChar();
                 break;
             }
-            else {
+            else if(ch == '\n' || ch == '\0' || ch == ' ' ||
+             ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == ':' || ch == ';'){
                 state = 5; //ch = nextChar();
+                break;
+            }
+            else{
+                state = FAILED_STATE;
                 break;
             }
         case 4:
@@ -266,6 +292,18 @@ Token getNumber() {
             token.type = REAL;
             token.value.raw = strtod(lexeme, NULL);
             return token;
+        // handle '0*' case
+        case 6:
+            if(ch == '\n' || ch == '\0' || ch == ' ' || 
+             ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == ':' || ch == ';'){
+                state = 4;
+                break;
+            }
+            else{
+                printf("ch : %x\n", ch);
+                state = FAILED_STATE;
+                break;
+            }
         default:
             fail();
             return FAILED_TOKEN;
@@ -342,7 +380,7 @@ Token getString() {
                 break;
             }
         case 2:
-            if (ch != '\\' && ch != '\"') {
+            if (ch != '\\' && ch != '\"' && ch != '\0') {
                 state = 2; ch = nextChar();
                 break;
             }
@@ -391,8 +429,8 @@ State getMultilineString() {
     // prevent void input
     int prev_length = strlen(buffer);
     gets(buffer + strlen(buffer));
-    int current_length = strlen(buffer);
     buffer[strlen(buffer)] = '\n';
+    int current_length = strlen(buffer);
     if (current_length - prev_length == 0 || (current_length - prev_length == 1 && buffer[strlen(buffer) - 1] == '\n')) {
         buffer[strlen(buffer) - 1] = NULL;
     }
@@ -492,31 +530,35 @@ void error(void) {
     //exit(-1);
     return;
 }
-void printSymbolTable(){
+void recovery(void){
+    // Skip Error Character
+    forward++;
+    lexeme_start++;
+    return;
+}
+void printSymbolTable() {
     int i = 0;
     // print symbol table
     printf("[*] Symbol Table\n");
-    while(TRUE){
-         if(symbol_table[i] == NULL){
+    while (TRUE) {
+        if (symbol_table[i] == NULL) {
             break;
         }
         printf("Index: %d, Symbol: %s\n", i, symbol_table[i]);
-        i++;       
+        i++;
     }
-    printf("\n");
     return;
 }
-void printStringTable(){
+void printStringTable() {
     int i = 0;
     // print string table
     printf("[*] String Table\n");
-    while(TRUE){
-        if(string_table[i] == NULL){
+    while (TRUE) {
+        if (string_table[i] == NULL) {
             break;
         }
         printf("Index: %d, String: %s\n", i, string_table[i]);
         i++;
     }
-    printf("\n");
     return;
 }
