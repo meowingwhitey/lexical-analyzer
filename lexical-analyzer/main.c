@@ -305,6 +305,10 @@ Token getNumber() {
                 state = 4;
                 break;
             }
+            else if (ch == '.') {
+                state = 3; ch = nextChar();
+                break;
+            }
             else{
                 //printf("ch : %x\n", ch);
                 state = FAILED_STATE;
