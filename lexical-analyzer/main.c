@@ -56,6 +56,7 @@ Token getId();
 Token getNumber();
 Token getString();
 Token getOperator();
+Token getSemiColon();
 State getMultilineString();
 
 Bool isTokenFail(Token token);
@@ -135,6 +136,11 @@ int main(int argc, char* argv[]) {
         // Line clear
         printf("\n");
     }
+    // free malloc memory
+    for (int i = 0; i < MAX_TABLE_SIZE; i ++) {
+        free(symbol_table[i]);
+        free(string_table[i]);
+    }
     return 0;
 }
 Token getNextToken() {
@@ -157,6 +163,10 @@ Token getNextToken() {
             if (isTokenFail(token)) { state = 3; break; }
             return token;
         case 3:
+            token = getSemiColon();
+            if (isTokenFail(token)) { state = 4; break; }
+            return token;
+        case 4:
             token = getString();
             if (isTokenFail(token)) { state = -1; break; }
             return token;
@@ -306,6 +316,29 @@ Token getNumber() {
         }
     }
 }
+Token getSemiColon(){
+    State state = 1;
+    Token token = { 0, 0 };
+    char ch = NULL;
+    ch = nextChar();
+    while (TRUE) {
+        switch (state) {
+        case 1:
+            if (ch == ';') { state = 2; break; }
+            else {
+                state = FAILED_STATE;
+                break;
+            }
+        case 2:
+            storeLexeme();
+            token.type = SEMI_COLON;
+            return token;
+        default:
+            fail();
+            return FAILED_TOKEN;
+        }
+    }
+}
 Token getOperator() {
     State state = 1;
     Token token = { 0, 0 };
@@ -314,44 +347,39 @@ Token getOperator() {
     while (TRUE) {
         switch (state) {
         case 1:
-            if (ch == '+') { state = 2; ch = nextChar(); break; }
-            else if (ch == '-') { state = 3; ch = nextChar(); break; }
-            else if (ch == '*') { state = 4; ch = nextChar(); break; }
-            else if (ch == '/') { state = 5; ch = nextChar(); break; }
-            else if (ch == '=') { state = 6; ch = nextChar(); break; }
-            else if (ch == ':') { state = 7; ch = nextChar(); break; }
-            else if (ch == ';') { state = 8; ch = nextChar(); break; }
+            if (ch == '+') { state = 2; break; }
+            else if (ch == '-') { state = 3; break; }
+            else if (ch == '*') { state = 4; break; }
+            else if (ch == '/') { state = 5; break; }
+            else if (ch == '=') { state = 6; break; }
+            else if (ch == ':') { state = 7; break; }
             else {
                 state = FAILED_STATE;
                 break;
             }
         case 2:
-            retract(); storeLexeme();
+            storeLexeme();
             token.type = ADD;
             return token;
         case 3:
-            retract(); storeLexeme();
+            storeLexeme();
             token.type = SUB;
             return token;
         case 4:
-            retract(); storeLexeme();
+            storeLexeme();
             token.type = MUL;
             return token;
         case 5:
-            retract(); storeLexeme();
+            storeLexeme();
             token.type = DIV;
             return token;
         case 6:
-            retract(); storeLexeme();
+            storeLexeme();
             token.type = ASSIGN;
             return token;
         case 7:
-            retract(); storeLexeme();
+            storeLexeme();
             token.type = COLON;
-            return token;
-        case 8:
-            retract(); storeLexeme();
-            token.type = SEMI_COLON;
             return token;
         default:
             fail();
