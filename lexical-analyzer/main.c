@@ -90,7 +90,6 @@ int main(int argc, char* argv[]) {
     forward = 0;
     // scan line from stdin
     while (TRUE) {
-        double a = .234;
         // prevent void input
         int prev_length = strlen(buffer);
         gets(buffer + strlen(buffer));
