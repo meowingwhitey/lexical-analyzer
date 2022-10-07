@@ -1,0 +1,15 @@
+1.12000
+.5
+0..5
+
+a11112222233333
+a111122222
+abc()(
+
+"this is \t \\
+multiple \t \\
+line string"
+
+"string\kstring"
+"string\tstring"
+

@@ -1,0 +1,13 @@
+10 + 5 * 3
+10.5 / 5
+0
+0.5
+
+a = 10
+b:2-3
+
+"hello"+"world"
+"multi \t \
+string\
+line"
+

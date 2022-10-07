@@ -1,0 +1,13 @@
+0000
+00123
+127.0.0.1
+
+abc123abc*
+123ttt
+start = %;
+4%4
+
+"hello world
+int a= 10; result = a;
+"string\
+not string
