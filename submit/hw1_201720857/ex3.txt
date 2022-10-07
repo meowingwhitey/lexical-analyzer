@@ -6,10 +6,9 @@ a11112222233333
 a111122222
 abc()(
 
-"this is \t \\
-multiple \t \\
+"this is \t \
+multiple \t \
 line string"
 
 "string\kstring"
 "string\tstring"
-
