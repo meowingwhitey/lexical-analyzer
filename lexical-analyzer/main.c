@@ -413,7 +413,7 @@ Token getString() {
                 break;
             }
             else if (ch == '\"') {
-                state = 4; ch = nextChar();
+                state = 4;
                 break;
             }
             else {
@@ -434,7 +434,7 @@ Token getString() {
                 break;
             }
         case 4:
-            retract(); storeLexeme();
+            storeLexeme();
             token.type = STRING;
             token.value.raw = installString();
             return token;
